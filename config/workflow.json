@@ -1,0 +1,59 @@
+{
+  "name": "FHIR_Data_Ingestion_Pipeline",
+  "description": "Daily FHIR API ingestion pipeline - Medallion Architecture with SCD Type 2 versioning",
+  "tasks": [
+    {
+      "task_key": "run_fhir_pipeline",
+      "description": "Ingest FHIR data (Patient, Encounter, Observation, Condition) through Raw -> Bronze -> Silver -> Gold layers",
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/24691a0363@mits.ac.in/Drafts/FHIR_Pipeline",
+        "base_parameters": {
+          "CATALOG": "vamsi",
+          "LOOKBACK_DAYS": "3"
+        },
+        "source": "WORKSPACE"
+      },
+      "timeout_seconds": 3600,
+      "max_retries": 2,
+      "min_retry_interval_millis": 300000,
+      "retry_on_timeout": true,
+      "environment_key": "default"
+    }
+  ],
+  "schedule": {
+    "quartz_cron_expression": "0 0 6 * * ?",
+    "timezone_id": "Asia/Kolkata",
+    "pause_status": "PAUSED"
+  },
+  "email_notifications": {
+    "on_failure": ["vamsiroyal729@gmail.com"],
+    "on_success": ["vamsiroyal729@gmail.com"],
+    "no_alert_for_skipped_runs": true
+  },
+  "webhook_notifications": {},
+  "timeout_seconds": 3600,
+  "max_concurrent_runs": 1,
+  "format": "MULTI_TASK",
+  "queue": {
+    "enabled": true
+  },
+  "parameters": [
+    {
+      "name": "CATALOG",
+      "default": "vamsi"
+    },
+    {
+      "name": "LOOKBACK_DAYS",
+      "default": "3"
+    }
+  ],
+  "tags": {
+    "project": "FHIR_Upskill",
+    "owner": "Mohan_Vamsi_Gandhodi",
+    "environment": "development",
+    "architecture": "medallion"
+  },
+  "run_as": {
+    "user_name": "24691a0363@mits.ac.in"
+  }
+}

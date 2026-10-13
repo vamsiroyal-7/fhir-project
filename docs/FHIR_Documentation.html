@@ -1,0 +1,397 @@
+<title>FHIR Pipeline Architecture</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,400;9..144,700;9..144,900&display=swap">
+<style>
+:root{--bg:#0b0f1a;--surface:rgba(22,28,45,0.85);--surface-solid:#161c2d;--fg:#e2e8f0;--fg-muted:#8896ab;--accent:#22d3ee;--accent2:#a78bfa;--green:#4ade80;--amber:#fbbf24;--red:#f87171;--border:rgba(255,255,255,0.08);--code-bg:#111827;--font-display:'Fraunces',Georgia,serif;--font-body:'Space Grotesk',system-ui,sans-serif;--font-mono:'JetBrains Mono',monospace;color-scheme:dark}
+@media(prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f8fafc;--surface:rgba(255,255,255,0.9);--surface-solid:#fff;--fg:#1e293b;--fg-muted:#64748b;--accent:#0891b2;--accent2:#7c3aed;--green:#16a34a;--amber:#d97706;--red:#dc2626;--border:rgba(0,0,0,0.08);--code-bg:#f1f5f9;color-scheme:light}}
+:root[data-theme="light"]{--bg:#f8fafc;--surface:rgba(255,255,255,0.9);--surface-solid:#fff;--fg:#1e293b;--fg-muted:#64748b;--accent:#0891b2;--accent2:#7c3aed;--green:#16a34a;--amber:#d97706;--red:#dc2626;--border:rgba(0,0,0,0.08);--code-bg:#f1f5f9;color-scheme:light}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);line-height:1.7;padding-inline:20px;padding-block:2rem}
+.wrap{max-width:900px;margin:0 auto}
+h1{font-family:var(--font-display);font-size:clamp(2rem,5vw,3rem);font-weight:900;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.5rem}
+h2{font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:var(--accent);margin:2.5rem 0 1rem}
+h3{font-size:1.1rem;font-weight:600;margin:1.5rem 0 0.75rem}
+p{margin-bottom:1rem}
+.subtitle{color:var(--fg-muted);font-size:1.1rem;margin-bottom:2rem}
+.glass{background:var(--surface);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin:1.25rem 0;transition:border-color 0.3s}
+.glass:hover{border-color:var(--accent)}
+.tag{display:inline-block;font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;padding:0.2rem 0.6rem;border-radius:4px;margin-bottom:0.5rem}
+.tag-arch{background:rgba(34,211,238,0.15);color:var(--accent)}
+.tag-table{background:rgba(167,139,250,0.15);color:var(--accent2)}
+.tag-scd{background:rgba(74,222,128,0.15);color:var(--green)}
+.tag-flow{background:rgba(251,191,36,0.15);color:var(--amber)}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:0.9rem}
+th,td{border:1px solid var(--border);padding:0.5rem 0.7rem;text-align:left;min-width:0}
+th{background:rgba(34,211,238,0.08);color:var(--accent);font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.04em}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:1rem;overflow-x:auto;font-family:var(--font-mono);font-size:0.85rem;line-height:1.6;margin:1rem 0}
+code{font-family:var(--font-mono);font-size:0.85rem}
+p code,li code{background:var(--code-bg);padding:0.15rem 0.4rem;border-radius:4px}
+.flow{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin:1rem 0;font-family:var(--font-mono);font-size:0.85rem}
+.flow-box{background:var(--surface-solid);border:2px solid var(--accent);border-radius:8px;padding:0.5rem 0.8rem;text-align:center;min-width:0}
+.flow-arrow{color:var(--accent);font-weight:700;font-size:1.1rem;flex-shrink:0}
+.analogy{background:rgba(251,191,36,0.08);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;padding:1rem 1.25rem;margin:1rem 0}
+.analogy .label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--amber);font-weight:600;margin-bottom:0.3rem}
+.theme-toggle{position:fixed;top:env(safe-area-inset-top,12px);right:16px;z-index:100;background:var(--surface-solid);border:1px solid var(--border);border-radius:8px;padding:0.4rem 0.6rem;cursor:pointer;font-size:1rem;color:var(--fg)}
+.toc{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.5rem;margin:1.5rem 0}
+.toc a{display:block;padding:0.5rem 0.8rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--fg);text-decoration:none;font-size:0.85rem;transition:all 0.2s}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+details{margin:0.75rem 0}details summary{cursor:pointer;font-weight:600;color:var(--accent);padding:0.5rem 0}
+details summary::before{content:'+ ';color:var(--accent2)}details[open] summary::before{content:'- '}
+details .inner{padding:0.5rem 0 0.5rem 1rem;border-left:2px solid var(--border)}
+@media(max-width:600px){.flow{flex-direction:column;align-items:stretch}.flow-arrow{text-align:center;transform:rotate(90deg)}}
+</style>
+
+<button class="theme-toggle" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">&#9680;</button>
+
+<div class="wrap">
+
+<h1>FHIR Pipeline Architecture</h1>
+<p class="subtitle">Complete documentation for the FHIR API Data Ingestion & Analytics Pipeline on Azure Databricks</p>
+
+<h2>Table of Contents</h2>
+<ul class="toc">
+  <li><a href="#overview">Project Overview</a></li>
+  <li><a href="#arch">Medallion Architecture</a></li>
+  <li><a href="#api">FHIR API Details</a></li>
+  <li><a href="#tables">All Tables & Views</a></li>
+  <li><a href="#relationships">Table Relationships</a></li>
+  <li><a href="#dataflow">Data Flow (End to End)</a></li>
+  <li><a href="#scd2">SCD Type 2 Explained</a></li>
+  <li><a href="#columns">Column Reference</a></li>
+  <li><a href="#constraints">Serverless Constraints</a></li>
+  <li><a href="#schedule">Scheduling & Orchestration</a></li>
+  <li><a href="#submission">Submission Guide</a></li>
+</ul>
+
+<!-- OVERVIEW -->
+<h2 id="overview">Project Overview</h2>
+<div class="glass">
+  <span class="tag tag-arch">Environment</span>
+  <table>
+    <tr><th>Setting</th><th>Value</th></tr>
+    <tr><td>Platform</td><td>Azure Databricks Serverless</td></tr>
+    <tr><td>Spark Version</td><td>4.2.0</td></tr>
+    <tr><td>Catalog</td><td><code>vamsi</code></td></tr>
+    <tr><td>Schemas</td><td><code>vamsi.bronze</code>, <code>vamsi.silver</code>, <code>vamsi.gold</code></td></tr>
+    <tr><td>Raw Volume</td><td><code>/Volumes/vamsi/default/fhir_raw</code></td></tr>
+    <tr><td>API</td><td>HAPI FHIR R4: <code>https://hapi.fhir.org/baseR4</code></td></tr>
+    <tr><td>Resources</td><td>Patient, Encounter, Observation, Condition</td></tr>
+    <tr><td>Ingestion</td><td>Incremental (last 3 days via _lastUpdated)</td></tr>
+    <tr><td>History</td><td>SCD Type 2 (tracks all changes over time)</td></tr>
+  </table>
+</div>
+
+<!-- MEDALLION ARCHITECTURE -->
+<h2 id="arch">Medallion Architecture</h2>
+<div class="glass">
+  <span class="tag tag-arch">4 Layers</span>
+  <div class="flow">
+    <div class="flow-box"><strong>FHIR API</strong><br><small>hapi.fhir.org</small></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box"><strong>RAW</strong><br><small>JSON files</small><br><small>in Volume</small></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box"><strong>BRONZE</strong><br><small>Delta tables</small><br><small>parsed records</small></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box"><strong>SILVER</strong><br><small>Delta tables</small><br><small>clean + SCD2</small></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box"><strong>GOLD</strong><br><small>SQL Views</small><br><small>reporting</small></div>
+  </div>
+
+  <table>
+    <tr><th>Layer</th><th>Format</th><th>Purpose</th><th>Deduplication</th></tr>
+    <tr><td>Raw</td><td>JSON files in Volume</td><td>Preserve exact API response bodies</td><td>Bucketed by date + run_id</td></tr>
+    <tr><td>Bronze</td><td>Delta tables</td><td>Parsed individual records + metadata</td><td>MERGE on resource_id + version_id + run_id</td></tr>
+    <tr><td>Silver</td><td>Delta tables</td><td>Cleaned columns + SCD2 history</td><td>Content hash comparison, at most 1 current row per resource</td></tr>
+    <tr><td>Gold</td><td>SQL Views</td><td>Current records only, optimized for reporting</td><td>WHERE is_current = true</td></tr>
+  </table>
+</div>
+
+<div class="glass">
+  <div class="analogy">
+    <div class="label">Analogy</div>
+    <p><strong>Raw</strong> = you take a photo of every page of a patient's file. Exact copy, nothing changed.<br>
+    <strong>Bronze</strong> = you type each page into a spreadsheet. Same info, structured format.<br>
+    <strong>Silver</strong> = you clean the spreadsheet: fix typos, remove duplicates, track what changed over time.<br>
+    <strong>Gold</strong> = you create a summary dashboard that doctors actually look at. Only current info, easy to read.</p>
+  </div>
+</div>
+
+<!-- API DETAILS -->
+<h2 id="api">FHIR API Details</h2>
+<div class="glass">
+  <span class="tag tag-flow">API Ingestion</span>
+  <table>
+    <tr><th>Setting</th><th>Value</th></tr>
+    <tr><td>Base URL</td><td><code>https://hapi.fhir.org/baseR4</code></td></tr>
+    <tr><td>Endpoints</td><td><code>/Patient</code>, <code>/Encounter</code>, <code>/Observation</code>, <code>/Condition</code></td></tr>
+    <tr><td>Incremental Filter</td><td><code>_lastUpdated=ge{start_date}</code></td></tr>
+    <tr><td>Pagination</td><td>FHIR Bundle <code>link</code> entries with <code>relation=next</code></td></tr>
+    <tr><td>Page Size</td><td>100 records per page</td></tr>
+    <tr><td>Max Pages</td><td>50 per resource (safety limit)</td></tr>
+    <tr><td>Retries</td><td>3 attempts with exponential backoff</td></tr>
+    <tr><td>Timeout</td><td>30 seconds per request</td></tr>
+  </table>
+
+  <h3>Orchestration Order</h3>
+  <div class="flow">
+    <div class="flow-box"><strong>1. Patient</strong></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box"><strong>2. Encounter</strong></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box"><strong>3. Observation</strong></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box"><strong>4. Condition</strong></div>
+  </div>
+  <p>Order matters because Encounter references Patient, and Observation/Condition reference both Patient and Encounter.</p>
+</div>
+
+<!-- ALL TABLES -->
+<h2 id="tables">All Tables & Views</h2>
+<div class="glass">
+  <span class="tag tag-table">Complete Inventory</span>
+  <table>
+    <tr><th>Layer</th><th>Full Name</th><th>Type</th><th>Purpose</th></tr>
+    <tr><td style="color:var(--amber)">Bronze</td><td><code>vamsi.bronze.fhir_patient_bronze</code></td><td>Delta Table</td><td>Raw Patient records + metadata</td></tr>
+    <tr><td style="color:var(--amber)">Bronze</td><td><code>vamsi.bronze.fhir_encounter_bronze</code></td><td>Delta Table</td><td>Raw Encounter records + metadata</td></tr>
+    <tr><td style="color:var(--amber)">Bronze</td><td><code>vamsi.bronze.fhir_observation_bronze</code></td><td>Delta Table</td><td>Raw Observation records + metadata</td></tr>
+    <tr><td style="color:var(--amber)">Bronze</td><td><code>vamsi.bronze.fhir_condition_bronze</code></td><td>Delta Table</td><td>Raw Condition records + metadata</td></tr>
+    <tr><td style="color:var(--accent)">Silver</td><td><code>vamsi.silver.fhir_patient_silver</code></td><td>Delta Table</td><td>Cleaned Patient + SCD2 history</td></tr>
+    <tr><td style="color:var(--accent)">Silver</td><td><code>vamsi.silver.fhir_encounter_silver</code></td><td>Delta Table</td><td>Cleaned Encounter + SCD2 history</td></tr>
+    <tr><td style="color:var(--accent)">Silver</td><td><code>vamsi.silver.fhir_observation_silver</code></td><td>Delta Table</td><td>Cleaned Observation + SCD2 history</td></tr>
+    <tr><td style="color:var(--accent)">Silver</td><td><code>vamsi.silver.fhir_condition_silver</code></td><td>Delta Table</td><td>Cleaned Condition + SCD2 history</td></tr>
+    <tr><td style="color:var(--green)">Gold</td><td><code>vamsi.gold.fhir_patient_summary</code></td><td>View</td><td>Current patients for reporting</td></tr>
+    <tr><td style="color:var(--green)">Gold</td><td><code>vamsi.gold.fhir_encounter_summary</code></td><td>View</td><td>Current encounters for reporting</td></tr>
+    <tr><td style="color:var(--green)">Gold</td><td><code>vamsi.gold.fhir_observation_summary</code></td><td>View</td><td>Current observations for reporting</td></tr>
+    <tr><td style="color:var(--green)">Gold</td><td><code>vamsi.gold.fhir_condition_summary</code></td><td>View</td><td>Current conditions for reporting</td></tr>
+  </table>
+  <p><strong>12 total objects:</strong> 4 Bronze tables + 4 Silver tables + 4 Gold views</p>
+</div>
+
+<!-- RELATIONSHIPS -->
+<h2 id="relationships">Table Relationships</h2>
+<div class="glass">
+  <span class="tag tag-table">Star Schema</span>
+<pre>
+Patient (patient_id) -- CENTRAL ENTITY
+  |
+  |-- Encounter (patient_reference = 'Patient/{patient_id}')
+  |     |
+  |     |-- Observation (encounter_reference = 'Encounter/{encounter_id}')
+  |     |
+  |     |-- Condition (encounter_reference = 'Encounter/{encounter_id}')
+  |
+  |-- Observation (patient_reference = 'Patient/{patient_id}')
+  |
+  |-- Condition (patient_reference = 'Patient/{patient_id}')
+</pre>
+
+  <table>
+    <tr><th>From Table</th><th>Column</th><th>To Table</th><th>Join Logic</th></tr>
+    <tr><td>Encounter</td><td>patient_reference</td><td>Patient</td><td>REPLACE(patient_reference, 'Patient/', '') = patient_id</td></tr>
+    <tr><td>Observation</td><td>patient_reference</td><td>Patient</td><td>REPLACE(patient_reference, 'Patient/', '') = patient_id</td></tr>
+    <tr><td>Observation</td><td>encounter_reference</td><td>Encounter</td><td>REPLACE(encounter_reference, 'Encounter/', '') = encounter_id</td></tr>
+    <tr><td>Condition</td><td>patient_reference</td><td>Patient</td><td>REPLACE(patient_reference, 'Patient/', '') = patient_id</td></tr>
+    <tr><td>Condition</td><td>encounter_reference</td><td>Encounter</td><td>REPLACE(encounter_reference, 'Encounter/', '') = encounter_id</td></tr>
+  </table>
+</div>
+
+<!-- DATA FLOW -->
+<h2 id="dataflow">Data Flow (End to End)</h2>
+<div class="glass">
+  <span class="tag tag-flow">Step by Step</span>
+  <table>
+    <tr><th>Step</th><th>What Happens</th><th>Input</th><th>Output</th></tr>
+    <tr><td>1</td><td>API call with _lastUpdated filter + pagination</td><td>FHIR API URL</td><td>JSON response (Bundle)</td></tr>
+    <tr><td>2</td><td>Save raw JSON to Volume</td><td>Response body</td><td><code>/Volumes/.../patient/2026-10-13/run_id/page_0001.json</code></td></tr>
+    <tr><td>3</td><td>Extract individual resources from Bundle</td><td>JSON Bundle</td><td>List of Patient/Encounter/etc records</td></tr>
+    <tr><td>4</td><td>Add metadata (timestamps, run_id, content_hash)</td><td>Each record</td><td>Record + 8 metadata columns</td></tr>
+    <tr><td>5</td><td>MERGE into Bronze Delta table (idempotent)</td><td>Records with metadata</td><td><code>vamsi.bronze.fhir_patient_bronze</code></td></tr>
+    <tr><td>6</td><td>Transform: extract meaningful columns from JSON</td><td>Bronze table</td><td>Flat columns (name, gender, city, etc.)</td></tr>
+    <tr><td>7</td><td>SCD2: compare content_hash with current row</td><td>Transformed records</td><td>New/changed rows inserted, old expired</td></tr>
+    <tr><td>8</td><td>Write to Silver Delta table</td><td>SCD2 processed records</td><td><code>vamsi.silver.fhir_patient_silver</code></td></tr>
+    <tr><td>9</td><td>CREATE OR REPLACE Gold views</td><td>Silver WHERE is_current=true</td><td><code>vamsi.gold.fhir_patient_summary</code></td></tr>
+    <tr><td>10</td><td>Data quality validations</td><td>All tables</td><td>PASS/FAIL for each check</td></tr>
+  </table>
+</div>
+
+<!-- SCD2 -->
+<h2 id="scd2">SCD Type 2 Explained</h2>
+<div class="glass">
+  <span class="tag tag-scd">How Changes Are Tracked</span>
+
+  <div class="analogy">
+    <div class="label">Analogy</div>
+    <p>Think of a patient's address history. When they move from Bangalore to Mumbai, we don't overwrite Bangalore. We mark Bangalore as "old address" with an end date, and add Mumbai as "current address" with a start date. Both rows exist. You can always look back and see where they lived at any point in time.</p>
+  </div>
+
+  <h3>Initial Load (Day 1)</h3>
+  <table>
+    <tr><th>resource_id</th><th>city</th><th>effective_from</th><th>effective_to</th><th>is_current</th></tr>
+    <tr><td>patient-001</td><td>Bangalore</td><td>2026-10-10</td><td>9999-12-31</td><td style="color:var(--green)">true</td></tr>
+  </table>
+  <p>One row. One version. Current.</p>
+
+  <h3>Day 3: Patient Moved to Mumbai</h3>
+  <table>
+    <tr><th>resource_id</th><th>city</th><th>effective_from</th><th>effective_to</th><th>is_current</th></tr>
+    <tr><td>patient-001</td><td>Bangalore</td><td>2026-10-10</td><td style="color:var(--red)">2026-10-12</td><td style="color:var(--red)">false</td></tr>
+    <tr><td>patient-001</td><td>Mumbai</td><td>2026-10-12</td><td>9999-12-31</td><td style="color:var(--green)">true</td></tr>
+  </table>
+  <p>Two rows. Old version expired (is_current=false). New version is current. History preserved.</p>
+
+  <h3>How Change Detection Works</h3>
+  <table>
+    <tr><th>Step</th><th>What Happens</th></tr>
+    <tr><td>1</td><td>Compute SHA256 hash of entire resource JSON (content_hash)</td></tr>
+    <tr><td>2</td><td>Compare incoming content_hash with current Silver row's content_hash</td></tr>
+    <tr><td>3a</td><td>Same hash = unchanged. Do nothing.</td></tr>
+    <tr><td>3b</td><td>Different hash = changed. Expire old row (is_current=false, set effective_to). Insert new row (is_current=true).</td></tr>
+    <tr><td>3c</td><td>No existing row = new resource. Insert as current.</td></tr>
+  </table>
+</div>
+
+<!-- COLUMNS -->
+<h2 id="columns">Column Reference</h2>
+<div class="glass">
+  <span class="tag tag-table">Bronze Columns (Same for All 4 Resources)</span>
+  <table>
+    <tr><th>Column</th><th>Type</th><th>Source</th></tr>
+    <tr><td>resource_id</td><td>STRING</td><td>FHIR resource.id</td></tr>
+    <tr><td>resource_type</td><td>STRING</td><td>Patient/Encounter/Observation/Condition</td></tr>
+    <tr><td>resource_json</td><td>STRING</td><td>Full JSON of the resource</td></tr>
+    <tr><td>meta_version_id</td><td>STRING</td><td>resource.meta.versionId</td></tr>
+    <tr><td>meta_last_updated</td><td>STRING</td><td>resource.meta.lastUpdated</td></tr>
+    <tr><td>extraction_timestamp</td><td>STRING</td><td>When pipeline run started</td></tr>
+    <tr><td>api_url_or_params</td><td>STRING</td><td>Full URL used for API call</td></tr>
+    <tr><td>api_call_timestamp</td><td>STRING</td><td>When HTTP request was made</td></tr>
+    <tr><td>data_saved_timestamp</td><td>STRING</td><td>When raw JSON was saved to Volume</td></tr>
+    <tr><td>ingestion_timestamp</td><td>STRING</td><td>When record was processed</td></tr>
+    <tr><td>run_id</td><td>STRING</td><td>Unique pipeline run identifier</td></tr>
+    <tr><td>raw_file_path</td><td>STRING</td><td>Path to raw JSON in Volume</td></tr>
+    <tr><td>content_hash</td><td>STRING</td><td>SHA256 of resource JSON for change detection</td></tr>
+  </table>
+</div>
+
+<div class="glass">
+  <span class="tag tag-table">Silver SCD2 Columns (Added to Each Resource)</span>
+  <table>
+    <tr><th>Column</th><th>Type</th><th>Purpose</th></tr>
+    <tr><td>effective_from</td><td>STRING</td><td>When this version became active</td></tr>
+    <tr><td>effective_to</td><td>STRING</td><td>When this version was superseded (9999-12-31 if current)</td></tr>
+    <tr><td>is_current</td><td>BOOLEAN</td><td>true = active version, false = historical</td></tr>
+    <tr><td>content_hash</td><td>STRING</td><td>SHA256 hash for change detection</td></tr>
+  </table>
+</div>
+
+<!-- CONSTRAINTS -->
+<h2 id="constraints">Serverless Constraints</h2>
+<div class="glass">
+  <span class="tag tag-flow">What We Cannot Do</span>
+  <table>
+    <tr><th>Blocked Operation</th><th>Why</th><th>Our Alternative</th></tr>
+    <tr><td><code>.cache()</code></td><td>PERSIST TABLE not supported on serverless</td><td>Recompute from Delta table (fast enough)</td></tr>
+    <tr><td><code>.persist()</code></td><td>Same as cache</td><td>Not used anywhere</td></tr>
+    <tr><td><code>.unpersist()</code></td><td>Nothing to unpersist</td><td>Not used anywhere</td></tr>
+    <tr><td><code>DeltaTable.isDeltaTable(spark, "catalog.schema.table")</code></td><td>Expects filesystem path, not catalog name</td><td><code>DESCRIBE TABLE</code> in try/except</td></tr>
+    <tr><td>Overwrite existing Bronze/Silver on incremental</td><td>Would lose historical data</td><td>MERGE (Bronze) + SCD2 append (Silver)</td></tr>
+    <tr><td>Hardcoded dates</td><td>Must be incremental</td><td>LOOKBACK_DAYS config parameter</td></tr>
+    <tr><td>Drop unrelated tables/schemas</td><td>Shared catalog with banking test data</td><td>Only touch FHIR-named tables</td></tr>
+  </table>
+</div>
+
+<!-- SCHEDULING -->
+<h2 id="schedule">Scheduling & Orchestration</h2>
+<div class="glass">
+  <span class="tag tag-flow">Databricks Workflow (workflow.json)</span>
+  <p>The pipeline is operationalized through a <strong>Databricks Workflow</strong> defined in <code>config/workflow.json</code>. This wraps the notebook into a scheduled, monitored, auto-retrying production job.</p>
+
+  <h3>Workflow Configuration</h3>
+  <table>
+    <tr><th>Setting</th><th>Value</th><th>Purpose</th></tr>
+    <tr><td>Job Name</td><td><code>FHIR_Data_Ingestion_Pipeline</code></td><td>Identifies this job in Databricks UI</td></tr>
+    <tr><td>Notebook Path</td><td><code>/Workspace/Users/.../Drafts/FHIR_Pipeline</code></td><td>Points to the notebook</td></tr>
+    <tr><td>Schedule</td><td>Daily 6:00 AM IST (Asia/Kolkata)</td><td>Runs before business hours</td></tr>
+    <tr><td>Cluster</td><td>Serverless (default environment)</td><td>No cluster management needed</td></tr>
+    <tr><td>Retries</td><td>2 retries, 5 min gap</td><td>Handles transient API/network failures</td></tr>
+    <tr><td>Timeout</td><td>3600 seconds (1 hour)</td><td>Kills stuck runs</td></tr>
+    <tr><td>Max Concurrent Runs</td><td>1</td><td>Prevents overlapping executions</td></tr>
+    <tr><td>Pause Status</td><td>PAUSED (safe default)</td><td>Won't run until manually unpaused</td></tr>
+    <tr><td>Email on Failure</td><td>vamsiroyal729@gmail.com</td><td>Alert when all retries exhausted</td></tr>
+    <tr><td>Email on Success</td><td>vamsiroyal729@gmail.com</td><td>Confirms daily run completed</td></tr>
+    <tr><td>Queue Enabled</td><td>Yes</td><td>Queues if max concurrent reached</td></tr>
+  </table>
+
+  <h3>Overridable Parameters</h3>
+  <table>
+    <tr><th>Parameter</th><th>Default</th><th>Purpose</th></tr>
+    <tr><td><code>CATALOG</code></td><td>vamsi</td><td>Unity Catalog to write to</td></tr>
+    <tr><td><code>LOOKBACK_DAYS</code></td><td>3</td><td>Days of data to fetch (override for backfill)</td></tr>
+  </table>
+
+  <h3>Resource Ordering</h3>
+  <div class="flow">
+    <div class="flow-box"><strong>1. Patient</strong></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box"><strong>2. Encounter</strong></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box"><strong>3. Observation</strong></div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-box"><strong>4. Condition</strong></div>
+  </div>
+  <p>Ordering is handled inside the notebook's RESOURCES list. Encounter references Patient, and Observation/Condition reference both.</p>
+
+  <h3>Idempotency Guarantee</h3>
+  <table>
+    <tr><th>Layer</th><th>Re-run Behavior</th><th>Duplicates?</th></tr>
+    <tr><td>Raw</td><td>Overwrites same file path</td><td>No</td></tr>
+    <tr><td>Bronze</td><td>MERGE skips existing rows</td><td>No</td></tr>
+    <tr><td>Silver</td><td>SCD2 skips unchanged records</td><td>No</td></tr>
+    <tr><td>Gold</td><td>CREATE OR REPLACE rebuilds view</td><td>No</td></tr>
+  </table>
+  <p>Safe to retry, re-run manually, or overlap with scheduled run. Zero data corruption.</p>
+
+  <h3>How to Activate</h3>
+  <p><strong>Option A (UI):</strong> Workflows -> Create Job -> JSON toggle -> paste workflow.json -> Create -> toggle PAUSED to UNPAUSED</p>
+  <p><strong>Option B (CLI):</strong> <code>databricks jobs create --json @workflow.json</code> then <code>databricks jobs update {id} --json '{"schedule":{"pause_status":"UNPAUSED"}}'</code></p>
+  <p><strong>Manual trigger:</strong> In UI click "Run Now", or CLI: <code>databricks jobs run-now {id}</code></p>
+</div>
+
+<!-- SUBMISSION -->
+<h2 id="submission">Submission Guide</h2>
+<div class="glass">
+  <span class="tag tag-arch">GitHub Repository Structure</span>
+<pre>FHIR_Pipeline_Project/
+  README.md                              -- Setup + run instructions
+  notebooks/
+    FHIR_Pipeline.py                     -- Main Databricks notebook (11 cells)
+  config/
+    workflow.json                        -- Databricks Workflow (schedule, retries, alerts)
+  docs/
+    FHIR_Notebook_Walkthrough.html       -- Cell-by-cell walkthrough
+    FHIR_Documentation.html              -- This architecture document
+    FHIR_What_Is_This.html               -- Simple explanation with analogies
+  reference/
+    FHIR_Clean_Notebook.md               -- Quick copy-paste notebook reference</pre>
+
+  <h3>Submission Checklist</h3>
+  <table>
+    <tr><th>Requirement</th><th>Status</th></tr>
+    <tr><td>Ingest 2-3 days of data with pagination</td><td style="color:var(--green)">DONE - configurable LOOKBACK_DAYS</td></tr>
+    <tr><td>Medallion Architecture (Raw/Bronze/Silver/Gold)</td><td style="color:var(--green)">DONE - all 4 layers</td></tr>
+    <tr><td>Metadata columns on all tables</td><td style="color:var(--green)">DONE - 8 metadata columns</td></tr>
+    <tr><td>Data versioning (SCD Type 2)</td><td style="color:var(--green)">DONE - effective_from/to + is_current</td></tr>
+    <tr><td>Modular reusable code</td><td style="color:var(--green)">DONE - functions, config, no hardcoding</td></tr>
+    <tr><td>Pipeline orchestration</td><td style="color:var(--green)">DONE - workflow.json (daily 6 AM IST, retries, email alerts, serverless)</td></tr>
+    <tr><td>Documentation</td><td style="color:var(--green)">DONE - this HTML + inline notebook docs</td></tr>
+    <tr><td>Data quality validations</td><td style="color:var(--green)">DONE - null checks, duplicate checks, SCD2 integrity</td></tr>
+    <tr><td>SCD2 controlled test</td><td style="color:var(--green)">DONE - isolated test on temp table</td></tr>
+    <tr><td>Serverless compatible</td><td style="color:var(--green)">DONE - no cache/persist/unpersist</td></tr>
+  </table>
+</div>
+
+<div class="glass" style="text-align:center;margin-top:2rem">
+  <p style="color:var(--fg-muted);font-size:0.85rem">FHIR API Data Ingestion & Analytics Pipeline</p>
+  <p style="color:var(--fg-muted);font-size:0.85rem">Built by Mohan Vamsi Gandhodi | Azure Databricks Serverless | Oct 2026</p>
+  <p style="font-size:0.85rem"><a href="https://github.com/vamsiroyal-7/fhir" style="color:var(--accent)">github.com/vamsiroyal-7/fhir</a></p>
+</div>
+
+</div>
